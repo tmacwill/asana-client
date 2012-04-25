@@ -138,7 +138,7 @@ module Asana
         return Asana.http_request(Net::HTTP::Post, url, data, query)
     end
 
-    def Asana.api_request(type, url, data, query)
+    def Asana.http_request(type, url, data, query)
         # set up http object
         uri = URI.parse API_URL + url
         http = Net::HTTP.new uri.host, uri.port
