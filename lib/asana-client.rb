@@ -13,6 +13,9 @@ require "yaml"
 require "chronic"
 
 module Asana
+
+    API_URL = "https://app.asana.com/api/1.0/"
+
     # initialize config values
     def Asana.init
         begin
@@ -122,53 +125,22 @@ module Asana
 
     # perform a GET request and return the response body as an object
     def Asana.get(url)
-        # set up http object
-        uri = URI.parse "https://app.asana.com/api/1.0/" + url
-        http = Net::HTTP.new uri.host, uri.port
-        http.use_ssl = true
-        http.verify_mode = OpenSSL::SSL::VERIFY_PEER
-
-        # all requests are json
-        header = {
-            "Content-Type" => "application/json"
-        }
-
-        # make request
-        req = Net::HTTP::Get.new("#{uri.path}?#{uri.query}", header)
-        req.basic_auth @@config["api_key"], ''
-        res = http.start { |http| http.request req }
-
-        # return request object
-        return JSON.parse(res.body)
+        return Asana.http_request(Net::HTTP::Get, url, data, query)
     end
 
     # perform a PUT request and return the response body as an object
     def Asana.put(url, data, query = nil)
-        # set up http object
-        uri = URI.parse "https://app.asana.com/api/1.0/" + url
-        http = Net::HTTP.new uri.host, uri.port
-        http.use_ssl = true
-        http.verify_mode = OpenSSL::SSL::VERIFY_PEER
-
-        # all requests are json
-        header = {
-            "Content-Type" => "application/json"
-        }
-
-        # make request
-        req = Net::HTTP::Put.new("#{uri.path}?#{uri.query}", header)
-        req.basic_auth @@config["api_key"], ''
-        req.set_form_data data 
-        res = http.start { |http| http.request req  }
-
-        # return request object
-        return JSON.parse(res.body)
+        return Asana.http_request(Net::HTTP::Put, url, data, query)
     end
 
     # perform a POST request and return the response body as an object
     def Asana.post(url, data, query = nil)
+        return Asana.http_request(Net::HTTP::Post, url, data, query)
+    end
+
+    def Asana.api_request(type, url, data, query)
         # set up http object
-        uri = URI.parse "https://app.asana.com/api/1.0/" + url
+        uri = URI.parse API_URL + url
         http = Net::HTTP.new uri.host, uri.port
         http.use_ssl = true
         http.verify_mode = OpenSSL::SSL::VERIFY_PEER
@@ -179,7 +151,7 @@ module Asana
         }
 
         # make request
-        req = Net::HTTP::Post.new("#{uri.path}?#{uri.query}", header)
+        req = type.new("#{uri.path}?#{uri.query}", header)
         req.basic_auth @@config["api_key"], ''
         req.set_form_data data 
         res = http.start { |http| http.request req  }
