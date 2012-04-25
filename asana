@@ -25,6 +25,13 @@ module Asana
         # concatenate array into a string
         string = args.join " "
 
+        # finish n: complete the task with id n
+        if string =~ /^finish (\d+)$/
+            Asana.put "tasks/#{$1}", { "completed" => true }
+            puts "Task completed"
+            exit
+        end
+
         # workspace: display tasks in that workspace
         if string =~ /^(\w+)$/
             # get corresponding workspace object
@@ -123,6 +130,29 @@ module Asana
         req = Net::HTTP::Get.new("#{uri.path}?#{uri.query}", header)
         req.basic_auth API_KEY, ''
         res = http.start { |http| http.request req }
+
+        # return request object
+        return JSON.parse(res.body)
+    end
+
+    # perform a PUT request and return the response body as an object
+    def Asana.put(url, data, query = nil)
+        # set up http object
+        uri = URI.parse "https://app.asana.com/api/1.0/" + url
+        http = Net::HTTP.new uri.host, uri.port
+        http.use_ssl = true
+        http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+
+        # all requests are json
+        header = {
+            "Content-Type" => "application/json"
+        }
+
+        # make request
+        req = Net::HTTP::Put.new("#{uri.path}?#{uri.query}", header)
+        req.basic_auth API_KEY, ''
+        req.set_form_data data 
+        res = http.start { |http| http.request req  }
 
         # return request object
         return JSON.parse(res.body)
@@ -341,6 +371,5 @@ module Asana
 end
 
 if __FILE__ == $0
-    #puts Asana.get "workspaces/462577466248/users"
     Asana.parse ARGV
 end
