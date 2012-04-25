@@ -31,3 +31,8 @@ Command-line client for viewing, adding, and completing tasks in Asana. Whenever
 
     $ asana workspace/project fix it @tommy 4/25/12
     $ asana workspace/project paper due friday
+
+### Complete a task
+
+    $ asana finish 12345
+

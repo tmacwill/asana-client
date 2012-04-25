@@ -9,10 +9,14 @@
 require "rubygems"
 require "JSON"
 require "net/https"
+require "yaml"
 require "chronic"
 
 module Asana
-    API_KEY = "71OkCVY.42IxmHQUmY2biLi5ogvUH5Nc"
+    # initialize config values
+    def Asana.init
+        @@config = YAML.load_file "config.yml"
+    end
 
     # parse argumens
     def Asana.parse(args)
@@ -128,7 +132,7 @@ module Asana
 
         # make request
         req = Net::HTTP::Get.new("#{uri.path}?#{uri.query}", header)
-        req.basic_auth API_KEY, ''
+        req.basic_auth @@config["api_key"], ''
         res = http.start { |http| http.request req }
 
         # return request object
@@ -150,7 +154,7 @@ module Asana
 
         # make request
         req = Net::HTTP::Put.new("#{uri.path}?#{uri.query}", header)
-        req.basic_auth API_KEY, ''
+        req.basic_auth @@config["api_key"], ''
         req.set_form_data data 
         res = http.start { |http| http.request req  }
 
@@ -173,7 +177,7 @@ module Asana
 
         # make request
         req = Net::HTTP::Post.new("#{uri.path}?#{uri.query}", header)
-        req.basic_auth API_KEY, ''
+        req.basic_auth @@config["api_key"], ''
         req.set_form_data data 
         res = http.start { |http| http.request req  }
 
@@ -371,5 +375,6 @@ module Asana
 end
 
 if __FILE__ == $0
+    Asana.init
     Asana.parse ARGV
 end
