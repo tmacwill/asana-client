@@ -1,0 +1,173 @@
+#!/usr/bin/env ruby
+
+require "rubygems"
+require "JSON"
+require "net/https"
+
+module Asana
+    API_KEY = "71OkCVY.42IxmHQUmY2biLi5ogvUH5Nc"
+
+    # parse ARGV 
+    def Asana.parse(args)
+        if args.empty?
+            puts "Nothing to do here"
+            exit
+        end
+
+        # concatenate array into a string
+        string = args.join " "
+
+        # check if only a workspace was given
+        if string =~ /^(\w+)$/
+            tasks = Asana::Workspace.find($1).tasks
+            puts tasks if !tasks.empty?
+        end
+
+        # check if only a workspace or a project was given
+        if string =~ /^(\w+)\/(\w+)$/
+            tasks = Asana::Project.find($1, $2).tasks
+            puts tasks if !tasks.empty?
+        end
+    end
+
+    # perform a GET request and return the response body as an object
+    def Asana.get(url)
+        # set up http object
+        uri = URI.parse("https://app.asana.com/api/1.0/" + url)
+        http = Net::HTTP.new(uri.host, uri.port)
+        http.use_ssl = true
+        http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+
+        # all requests are json
+        header = {
+            "Content-Type" => "application/json"
+        }
+
+        # make request
+        req = Net::HTTP::Get.new("#{uri.path}?#{uri.query}", header)
+        req.basic_auth(API_KEY, '')
+        res = http.start { |http| http.request(req) }
+
+        # return request object
+        return JSON.parse(res.body)
+    end
+
+    # get all of the users workspaces
+    def Asana.workspaces
+        spaces = self.get("workspaces")
+        list = []
+
+        # convert array to hash indexed on workspace name
+        spaces["data"].each do |space|
+            list.push Workspace.new :id => space["id"], :name => space["name"]
+        end
+
+        list
+    end
+
+    class Project
+        attr_accessor :id, :name, :workspace
+
+        def initialize(hash)
+            self.id = hash[:id] || 0
+            self.name = hash[:name] || ""
+            self.workspace = hash[:workspace] || nil
+        end
+
+        # search for a project within a workspace
+        def self.find(workspace, name)
+            # if given string for workspace, convert to object
+            if workspace.is_a? String
+                workspace = Asana::Workspace.find(workspace)
+            end
+
+            # check if any workspace contains the given name, and return first hit
+            name.downcase!
+            workspace.projects.each do |project|
+                if (project.name.downcase.include? name)
+                    return project
+                end
+            end
+        end
+
+        # get the tasks associated with the current project
+        def tasks
+            task_objects = Asana.get "tasks?workspace=#{workspace.id}&project=#{self.id}&assignee=me"
+            list = []
+
+            task_objects["data"].each do |task|
+                list.push Task.new :id => task["id"], :name => task["name"],
+                    :workspace => self.workspace, :project => self
+            end
+
+            list
+        end
+    end
+
+    class Task
+        attr_accessor :id, :name, :workspace, :project
+
+        def initialize(hash)
+            self.id = hash[:id] || 0
+            self.name = hash[:name] || ""
+            self.workspace = hash[:workspace] || nil
+            self.project = hash[:project] || nil
+        end
+
+        def to_s
+            return "(#{self.id}) #{self.name}"
+        end
+    end
+
+    class Workspace
+        attr_accessor :id, :name
+
+        def initialize(hash)
+            self.id = hash[:id] || 0
+            self.name = hash[:name] || ""
+        end
+
+        # search a workspace by name
+        def self.find(name)
+            # check if any workspace contains the given name, and return first hit
+            name.downcase!
+            Asana.workspaces.each do |workspace|
+                if (workspace.name.downcase.include? name)
+                    return workspace
+                end
+            end
+        end
+
+        # get all projects associated with a workspace
+        def projects
+            project_objects = Asana.get("projects?workspace=#{self.id}")
+            list = []
+
+            project_objects["data"].each do |project|
+                list.push Project.new :id => project["id"], :name => project["name"], :workspace => self
+            end
+
+            list
+        end
+
+        # get all tasks associated with a workspace
+        def tasks
+            task_objects = Asana.get("tasks?workspace=#{self.id}&assignee=me")
+            list = []
+
+            task_objects["data"].each do |task|
+                list.push Task.new :id => task["id"], :name => task["name"],
+                    :workspace => self
+            end
+
+            list
+        end
+    end
+end
+
+if __FILE__ == $0
+    Asana.parse(ARGV)
+end
+
+# asana inc/core fix ui bug @ong #frontend tomorrow
+# if no @, then assign to me
