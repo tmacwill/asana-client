@@ -1,5 +1,11 @@
 #!/usr/bin/env ruby
 
+##
+# Asana API library and command-line client
+# Tommy MacWilliam <tmacwilliam@cs.harvard.edu>
+#
+#
+
 require "rubygems"
 require "JSON"
 require "net/https"
@@ -17,16 +23,40 @@ module Asana
         # concatenate array into a string
         string = args.join " "
 
-        # check if only a workspace was given
+        # workspace: display tasks in that workspace
         if string =~ /^(\w+)$/
+            # display all tasks in the workspace
             tasks = Asana::Workspace.find($1).tasks
             puts tasks if !tasks.empty?
         end
 
-        # check if only a workspace or a project was given
+        # workspace/project: display tasks in that project
         if string =~ /^(\w+)\/(\w+)$/
+            # display all tasks in the project
             tasks = Asana::Project.find($1, $2).tasks
             puts tasks if !tasks.empty?
+        end
+
+        # workspace task name: create task in that workspace
+        if string =~ /^(\w+) ([\w ]+)/
+            # get corresponding workspace object
+            workspace = Asana::Workspace.find($1)
+
+            # add task to workspace
+            Asana.post "tasks", { "workspace" => workspace.id, "assignee" => "me", "name" => $2 }
+            puts "Task created in #{workspace.name}"
+        end
+
+        # workspace/project task name: create task in that workspace
+        if string =~ /^(\w+)\/(\w+) ([\w ]+)/
+            # get corresponding workspace and project
+            workspace = Asana::Workspace.find($1)
+            project = Asana::Project.find(workspace, $2)
+
+            # create project and add to workspace
+            task = Asana.post "tasks", { "workspace" => workspace.id, "assignee" => "me", "name" => $3 }
+            Asana.post "tasks/#{task['data']['id']}/addProject", { "project" => project.id }
+            puts "Task created in #{workspace.name}/#{project.name}"
         end
     end
 
@@ -46,6 +76,29 @@ module Asana
         # make request
         req = Net::HTTP::Get.new("#{uri.path}?#{uri.query}", header)
         req.basic_auth(API_KEY, '')
+        res = http.start { |http| http.request(req) }
+
+        # return request object
+        return JSON.parse(res.body)
+    end
+
+    # perform a POST request and return the response body as an object
+    def Asana.post(url, data, query = nil)
+        # set up http object
+        uri = URI.parse("https://app.asana.com/api/1.0/" + url)
+        http = Net::HTTP.new(uri.host, uri.port)
+        http.use_ssl = true
+        http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+
+        # all requests are json
+        header = {
+            "Content-Type" => "application/json"
+        }
+
+        # make request
+        req = Net::HTTP::Post.new("#{uri.path}?#{uri.query}", header)
+        req.basic_auth(API_KEY, '')
+        req.set_form_data(data)
         res = http.start { |http| http.request(req) }
 
         # return request object
@@ -168,6 +221,3 @@ end
 if __FILE__ == $0
     Asana.parse(ARGV)
 end
-
-# asana inc/core fix ui bug @ong #frontend tomorrow
-# if no @, then assign to me
