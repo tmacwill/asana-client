@@ -9,12 +9,14 @@
 require "rubygems"
 require "JSON"
 require "net/https"
+require "chronic"
 
 module Asana
     API_KEY = "71OkCVY.42IxmHQUmY2biLi5ogvUH5Nc"
 
-    # parse ARGV 
+    # parse argumens
     def Asana.parse(args)
+        # no arguments given
         if args.empty?
             puts "Nothing to do here"
             exit
@@ -51,58 +53,51 @@ module Asana
 
         # extract assignee, if any
         assignee = nil
-        ARGV.each do |word|
+        args.each do |word|
             if word =~ /^@(\w+)$/
                 assignee = word[1..-1]
-                ARGV.delete word
+                args.delete word
             end
         end
+
+        # extract due date, if any
+        due = Chronic.parse(args.reverse[0..1].reverse.join(" "))
+        if !due.nil? && due.to_s =~ /(\d+)-(\d+)-(\d+)/
+            # penultimate word is part of the date or a stop word, so remove it
+            if Chronic.parse(args.reverse[1]) || ["due", "on", "for"].include?(args.reverse[1].downcase)
+                args.pop
+            end
+
+            # extract date from datetime and remove date from task name
+            args.pop
+            due = "#{$1}-#{$2}-#{$3}"
+        end
+
+        # reset string, because we modifed argv
+        string = args.join " "
 
         # workspace task name: create task in that workspace
         if string =~ /^(\w+) ([\w ]+)/
             # get corresponding workspace 
             workspace = Asana::Workspace.find $1
-            abort "Workspace not found" unless workspace
 
-            # if assignee was given, get user
-            if !assignee.nil?
-                assignee = Asana::User.find workspace, assignee 
-                abort "Assignee not found" unless assignee
-            end
-
-            # add task to workspace
-            Asana.post "tasks", { 
-                "workspace" => workspace.id, 
-                "name" => $2,
-                "assignee" => (assignee.nil?) ? "me" : assignee.id
-            }
-
+            # create task in workspace
+            Asana::Task.create workspace, $2, assignee, due
             puts "Task created in #{workspace.name}"
             exit
         end
 
         # workspace/project task name: create task in that workspace
         if string =~ /^(\w+)\/(\w+) ([\w ]+)/
-            # get corresponding workspace
+            # get corresponding workspace 
             workspace = Asana::Workspace.find $1
-            abort "Workspace not found" unless workspace
+
+            # create task in workspace
+            Asana::Task.create workspace, $3, assignee, due
 
             # get corresponding project
             project = Asana::Project.find workspace, $2
             abort "Project not found" unless project
-
-            # if assignee was given, get user
-            if !assignee.nil?
-                assignee = Asana::User.find workspace, assignee 
-                abort "Assignee not found" unless assignee
-            end
-
-            # add task to workspace
-            task = Asana.post "tasks", { 
-                "workspace" => workspace.id, 
-                "name" => $3,
-                "assignee" => (assignee.nil?) ? "me" : assignee.id
-            }
 
             # add task to project
             Asana.post "tasks/#{task['data']['id']}/addProject", { "project" => project.id }
@@ -222,6 +217,36 @@ module Asana
             self.project = hash[:project] || nil
         end
 
+        # create a new task on the server
+        def self.create(workspace, name, assignee = nil, due = nil)
+            # if given string for workspace, convert to object
+            if workspace.is_a? String
+                workspace = Asana::Workspace.find workspace 
+            end
+            abort "Workspace not found" unless workspace
+
+            # if assignee was given, get user
+            if !assignee.nil?
+                assignee = Asana::User.find workspace, assignee 
+                abort "Assignee not found" unless assignee
+            end
+
+            # add task to workspace
+            params = {
+                "workspace" => workspace.id, 
+                "name" => name,
+                "assignee" => (assignee.nil?) ? "me" : assignee.id
+            }
+    
+            # attach due date if given
+            if !due.nil?
+                params["due_on"] = due
+            end
+
+            # add task to workspace
+            Asana.post "tasks", params
+        end
+
         def to_s
             "(#{self.id}) #{self.name}"
         end
@@ -317,5 +342,5 @@ end
 
 if __FILE__ == $0
     #puts Asana.get "workspaces/462577466248/users"
-    Asana.parse(ARGV)
+    Asana.parse ARGV
 end
