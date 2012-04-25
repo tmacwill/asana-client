@@ -5,11 +5,13 @@ require "asana-client"
 
 # get newly committed message
 message = `git log -1 HEAD --pretty=format:%s`.split " "
+commit = `git log -1 HEAD --pretty=format:%H`
 Asana.init
 
 message.each do |word|
     # check if any word in commit message is an issue id 
     if word =~ /^\d{10,}$/
-         Asana::Task.finish word
+        Asana::Task.finish word
+        Asana::Task.comment word, "closed by commit " + message
     end
 end

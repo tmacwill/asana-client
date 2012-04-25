@@ -9,7 +9,7 @@ Command-line client for viewing, adding, and completing tasks in Asana. Whenever
 
 Now, open up Asana's web app and select "Account Settings". You should see a tab that says "API". Copy the text, then execute the following:
 
-    $ cat "api_key: PASTE_YOUR_API_KEY_HERE" > ~/.asana-client
+    $ echo "api_key: PASTE_YOUR_API_KEY_HERE" > ~/.asana-client
 
 Basically, that's just creating a YAML configuration file (containing your API key) called <tt>.asana-client</tt> in your home directory.
 
@@ -46,4 +46,4 @@ Basically, that's just creating a YAML configuration file (containing your API k
 
 ## Git Integration
 
-Copy the <tt>post-commit</tt> file into your repo's <tt>.git/hooks</tt> directory, and make sure to execute <tt>chmod +x .git/hooks/post-commit</tt> from the root of your repo. Now, simply mention the ID of an Asana task inside your commit message, and the issue will be closed automatically. For example, if you determine a relevant bug has an ID of 12345 (using the asana command-line client), you could say <tt>git commit -m "this commit fixes issue 12345"</tt>.
+Copy the <tt>post-commit</tt> file into your repo's <tt>.git/hooks</tt> directory, and make sure to execute <tt>chmod +x .git/hooks/post-commit</tt> from the root of your repo. Now, simply mention the ID of an Asana task inside your commit message, and the issue will be closed automatically and a comment with the relevent commit will be posted. For example, if you determine a relevant bug has an ID of 12345 (using the asana command-line client), you could say <tt>git commit -m "this commit fixes issue 12345"</tt>.

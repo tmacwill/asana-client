@@ -138,6 +138,7 @@ module Asana
         return Asana.http_request(Net::HTTP::Post, url, data, query)
     end
 
+    # perform an HTTP request to the Asana API
     def Asana.http_request(type, url, data, query)
         # set up http object
         uri = URI.parse API_URL + url
@@ -153,7 +154,9 @@ module Asana
         # make request
         req = type.new("#{uri.path}?#{uri.query}", header)
         req.basic_auth @@config["api_key"], ''
-        req.set_form_data data 
+        if req.respond_to?(:set_form_data) && !data.nil?
+            req.set_form_data data 
+        end
         res = http.start { |http| http.request req  }
 
         # return request object
@@ -256,9 +259,24 @@ module Asana
             Asana.post "tasks", params
         end
 
+        # comment on a task
+        def self.comment(id, text)
+            Asana.post "tasks/#{id}/stories", { "text" => text }
+        end
+
+        # comment on the current task
+        def comment(text)
+            self.comment(self.id, text)
+        end
+
         # finish a task
         def self.finish(id)
             Asana.put "tasks/#{id}", { "completed" => true }
+        end
+
+        # finish the current task
+        def finish
+            self.finish(self.id)
         end
 
         def to_s
