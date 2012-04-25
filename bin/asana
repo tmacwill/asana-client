@@ -1,0 +1,6 @@
+#!/usr/bin/env ruby
+
+require 'asana-client'
+
+Asana.init
+Asana.parse ARGV

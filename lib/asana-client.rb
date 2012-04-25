@@ -15,15 +15,18 @@ require "chronic"
 module Asana
     # initialize config values
     def Asana.init
-        @@config = YAML.load_file "config.yml"
+        begin
+            @@config = YAML.load_file File.expand_path "~/.asana-client"
+        rescue
+            abort "Configuration file could not be found.\nSee https://github.com/tmac721/asana-client for installation instructions."
+        end
     end
 
     # parse argumens
     def Asana.parse(args)
         # no arguments given
         if args.empty?
-            puts "Nothing to do here"
-            exit
+            abort "Nothing to do here."
         end
 
         # concatenate array into a string
@@ -31,8 +34,8 @@ module Asana
 
         # finish n: complete the task with id n
         if string =~ /^finish (\d+)$/
-            Asana.put "tasks/#{$1}", { "completed" => true }
-            puts "Task completed"
+            Asana::Task.finish $1
+            puts "Task completed!"
             exit
         end
 
@@ -40,7 +43,7 @@ module Asana
         if string =~ /^(\w+)$/
             # get corresponding workspace object
             workspace = Asana::Workspace.find $1
-            abort "Workspace not found" unless workspace
+            abort "Workspace not found!" unless workspace
 
             # display all tasks in workspace
             puts workspace.tasks unless workspace.tasks.empty?
@@ -51,11 +54,11 @@ module Asana
         if string =~ /^(\w+)\/(\w+)$/
             # get corresponding workspace
             workspace = Asana::Workspace.find $1
-            abort "Workspace not found" unless workspace
+            abort "Workspace not found!" unless workspace
 
             # get corresponding project
             project = Asana::Project.find workspace, $2
-            abort "Project not found" unless project
+            abort "Project not found!" unless project
 
             # display all tasks in project
             puts project.tasks unless project.tasks.empty?
@@ -94,7 +97,7 @@ module Asana
 
             # create task in workspace
             Asana::Task.create workspace, $2, assignee, due
-            puts "Task created in #{workspace.name}"
+            puts "Task created in #{workspace.name}!"
             exit
         end
 
@@ -108,11 +111,11 @@ module Asana
 
             # get corresponding project
             project = Asana::Project.find workspace, $2
-            abort "Project not found" unless project
+            abort "Project not found!" unless project
 
             # add task to project
             Asana.post "tasks/#{task['data']['id']}/addProject", { "project" => project.id }
-            puts "Task created in #{workspace.name}/#{project.name}"
+            puts "Task created in #{workspace.name}/#{project.name}!"
             exit
         end
     end
@@ -281,6 +284,11 @@ module Asana
             Asana.post "tasks", params
         end
 
+        # finish a task
+        def self.finish(id)
+            Asana.put "tasks/#{id}", { "completed" => true }
+        end
+
         def to_s
             "(#{self.id}) #{self.name}"
         end
@@ -333,6 +341,8 @@ module Asana
                     return workspace
                 end
             end
+
+            nil
         end
 
         # get all projects associated with a workspace
@@ -373,6 +383,7 @@ module Asana
         end
     end
 end
+
 
 if __FILE__ == $0
     Asana.init

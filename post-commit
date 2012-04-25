@@ -1,0 +1,15 @@
+#!/usr/bin/env ruby
+
+require "rubygems"
+require "asana-client"
+
+# get newly committed message
+message = `git log -1 HEAD --pretty=format:%s`.split " "
+Asana.init
+
+message.each do |word|
+    # check if any word in commit message is an issue id 
+    if word =~ /^\d{10,}$/
+         Asana::Task.finish word
+    end
+end
