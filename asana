@@ -25,46 +25,97 @@ module Asana
 
         # workspace: display tasks in that workspace
         if string =~ /^(\w+)$/
-            # display all tasks in the workspace
-            tasks = Asana::Workspace.find($1).tasks
-            puts tasks if !tasks.empty?
+            # get corresponding workspace object
+            workspace = Asana::Workspace.find $1
+            abort "Workspace not found" unless workspace
+
+            # display all tasks in workspace
+            puts workspace.tasks unless workspace.tasks.empty?
+            exit
         end
 
         # workspace/project: display tasks in that project
         if string =~ /^(\w+)\/(\w+)$/
-            # display all tasks in the project
-            tasks = Asana::Project.find($1, $2).tasks
-            puts tasks if !tasks.empty?
+            # get corresponding workspace
+            workspace = Asana::Workspace.find $1
+            abort "Workspace not found" unless workspace
+
+            # get corresponding project
+            project = Asana::Project.find workspace, $2
+            abort "Project not found" unless project
+
+            # display all tasks in project
+            puts project.tasks unless project.tasks.empty?
+            exit
+        end
+
+        # extract assignee, if any
+        assignee = nil
+        ARGV.each do |word|
+            if word =~ /^@(\w+)$/
+                assignee = word[1..-1]
+                ARGV.delete word
+            end
         end
 
         # workspace task name: create task in that workspace
         if string =~ /^(\w+) ([\w ]+)/
-            # get corresponding workspace object
-            workspace = Asana::Workspace.find($1)
+            # get corresponding workspace 
+            workspace = Asana::Workspace.find $1
+            abort "Workspace not found" unless workspace
+
+            # if assignee was given, get user
+            if !assignee.nil?
+                assignee = Asana::User.find workspace, assignee 
+                abort "Assignee not found" unless assignee
+            end
 
             # add task to workspace
-            Asana.post "tasks", { "workspace" => workspace.id, "assignee" => "me", "name" => $2 }
+            Asana.post "tasks", { 
+                "workspace" => workspace.id, 
+                "name" => $2,
+                "assignee" => (assignee.nil?) ? "me" : assignee.id
+            }
+
             puts "Task created in #{workspace.name}"
+            exit
         end
 
         # workspace/project task name: create task in that workspace
         if string =~ /^(\w+)\/(\w+) ([\w ]+)/
-            # get corresponding workspace and project
-            workspace = Asana::Workspace.find($1)
-            project = Asana::Project.find(workspace, $2)
+            # get corresponding workspace
+            workspace = Asana::Workspace.find $1
+            abort "Workspace not found" unless workspace
 
-            # create project and add to workspace
-            task = Asana.post "tasks", { "workspace" => workspace.id, "assignee" => "me", "name" => $3 }
+            # get corresponding project
+            project = Asana::Project.find workspace, $2
+            abort "Project not found" unless project
+
+            # if assignee was given, get user
+            if !assignee.nil?
+                assignee = Asana::User.find workspace, assignee 
+                abort "Assignee not found" unless assignee
+            end
+
+            # add task to workspace
+            task = Asana.post "tasks", { 
+                "workspace" => workspace.id, 
+                "name" => $3,
+                "assignee" => (assignee.nil?) ? "me" : assignee.id
+            }
+
+            # add task to project
             Asana.post "tasks/#{task['data']['id']}/addProject", { "project" => project.id }
             puts "Task created in #{workspace.name}/#{project.name}"
+            exit
         end
     end
 
     # perform a GET request and return the response body as an object
     def Asana.get(url)
         # set up http object
-        uri = URI.parse("https://app.asana.com/api/1.0/" + url)
-        http = Net::HTTP.new(uri.host, uri.port)
+        uri = URI.parse "https://app.asana.com/api/1.0/" + url
+        http = Net::HTTP.new uri.host, uri.port
         http.use_ssl = true
         http.verify_mode = OpenSSL::SSL::VERIFY_PEER
 
@@ -75,8 +126,8 @@ module Asana
 
         # make request
         req = Net::HTTP::Get.new("#{uri.path}?#{uri.query}", header)
-        req.basic_auth(API_KEY, '')
-        res = http.start { |http| http.request(req) }
+        req.basic_auth API_KEY, ''
+        res = http.start { |http| http.request req }
 
         # return request object
         return JSON.parse(res.body)
@@ -85,8 +136,8 @@ module Asana
     # perform a POST request and return the response body as an object
     def Asana.post(url, data, query = nil)
         # set up http object
-        uri = URI.parse("https://app.asana.com/api/1.0/" + url)
-        http = Net::HTTP.new(uri.host, uri.port)
+        uri = URI.parse "https://app.asana.com/api/1.0/" + url
+        http = Net::HTTP.new uri.host, uri.port
         http.use_ssl = true
         http.verify_mode = OpenSSL::SSL::VERIFY_PEER
 
@@ -97,9 +148,9 @@ module Asana
 
         # make request
         req = Net::HTTP::Post.new("#{uri.path}?#{uri.query}", header)
-        req.basic_auth(API_KEY, '')
-        req.set_form_data(data)
-        res = http.start { |http| http.request(req) }
+        req.basic_auth API_KEY, ''
+        req.set_form_data data 
+        res = http.start { |http| http.request req  }
 
         # return request object
         return JSON.parse(res.body)
@@ -107,7 +158,7 @@ module Asana
 
     # get all of the users workspaces
     def Asana.workspaces
-        spaces = self.get("workspaces")
+        spaces = self.get "workspaces" 
         list = []
 
         # convert array to hash indexed on workspace name
@@ -131,21 +182,25 @@ module Asana
         def self.find(workspace, name)
             # if given string for workspace, convert to object
             if workspace.is_a? String
-                workspace = Asana::Workspace.find(workspace)
+                workspace = Asana::Workspace.find workspace 
             end
 
             # check if any workspace contains the given name, and return first hit
             name.downcase!
-            workspace.projects.each do |project|
-                if (project.name.downcase.include? name)
-                    return project
+            if workspace
+                workspace.projects.each do |project|
+                    if project.name.downcase.include? name
+                        return project
+                    end
                 end
             end
+
+            nil
         end
 
-        # get the tasks associated with the current project
+        # get all tasks associated with the current project
         def tasks
-            task_objects = Asana.get "tasks?workspace=#{workspace.id}&project=#{self.id}&assignee=me"
+            task_objects = Asana.get "tasks?workspace=#{workspace.id}&project=#{self.id}"
             list = []
 
             task_objects["data"].each do |task|
@@ -168,7 +223,37 @@ module Asana
         end
 
         def to_s
-            return "(#{self.id}) #{self.name}"
+            "(#{self.id}) #{self.name}"
+        end
+    end
+
+    class User
+        attr_accessor :id, :name
+
+        def initialize(hash)
+            self.id = hash[:id] || 0
+            self.name = hash[:name] || ""
+        end
+
+        def self.find(workspace, name)
+            # if given string for workspace, convert to object
+            if workspace.is_a? String
+                workspace = Asana::Workspace.find workspace 
+            end
+
+            # check if any workspace contains the given name, and return first hit
+            name.downcase!
+            workspace.users.each do |user|
+                if user.name.downcase.include? name
+                    return user
+                end
+            end
+
+            nil
+        end
+
+        def to_s
+            self.name
         end
     end
 
@@ -185,7 +270,7 @@ module Asana
             # check if any workspace contains the given name, and return first hit
             name.downcase!
             Asana.workspaces.each do |workspace|
-                if (workspace.name.downcase.include? name)
+                if workspace.name.downcase.include? name
                     return workspace
                 end
             end
@@ -193,7 +278,7 @@ module Asana
 
         # get all projects associated with a workspace
         def projects
-            project_objects = Asana.get("projects?workspace=#{self.id}")
+            project_objects = Asana.get "projects?workspace=#{self.id}"
             list = []
 
             project_objects["data"].each do |project|
@@ -203,9 +288,9 @@ module Asana
             list
         end
 
-        # get all tasks associated with a workspace
+        # get tasks assigned to me within this workspace
         def tasks
-            task_objects = Asana.get("tasks?workspace=#{self.id}&assignee=me")
+            task_objects = Asana.get "tasks?workspace=#{self.id}&assignee=me"
             list = []
 
             task_objects["data"].each do |task|
@@ -215,9 +300,22 @@ module Asana
 
             list
         end
+
+        # get all users in the workspace
+        def users
+            user_objects = Asana.get "workspaces/#{self.id}/users"
+            list = []
+
+            user_objects["data"].each do |user|
+                list.push User.new :id => user["id"], :name => user["name"]
+            end
+
+            list
+        end
     end
 end
 
 if __FILE__ == $0
+    #puts Asana.get "workspaces/462577466248/users"
     Asana.parse(ARGV)
 end
