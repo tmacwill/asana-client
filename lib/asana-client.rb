@@ -125,7 +125,7 @@ module Asana
 
     # perform a GET request and return the response body as an object
     def Asana.get(url)
-        return Asana.http_request(Net::HTTP::Get, url, data, query)
+        return Asana.http_request(Net::HTTP::Get, url, nil, nil)
     end
 
     # perform a PUT request and return the response body as an object
