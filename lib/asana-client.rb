@@ -110,7 +110,7 @@ module Asana
             workspace = Asana::Workspace.find $1
 
             # create task in workspace
-            Asana::Task.create workspace, $3, assignee, due
+            task = Asana::Task.create workspace, $3, assignee, due
 
             # get corresponding project
             project = Asana::Project.find workspace, $2

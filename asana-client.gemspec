@@ -9,5 +9,6 @@ Gem::Specification.new do |s|
     s.files = ["lib/asana-client.rb"]
     s.executables << "asana"
     s.add_dependency "chronic", ">= 0.6.7"
+    s.add_dependency "json", ">= 1.6.6"
     s.homepage = "https://github.com/tmac721/asana-client"
 end
