@@ -4,14 +4,20 @@ require "rubygems"
 require "asana-client"
 
 # get newly committed message
-message = `git log -1 HEAD --pretty=format:%s`.split " "
+message = `git log -1 HEAD --pretty=format:%s`
 commit = `git log -1 HEAD --pretty=format:%H`
 Asana.init
 
-message.each do |word|
-    # check if any word in commit message is an issue id 
-    if word =~ /^\d{10,}$/
-        Asana::Task.finish word
-        Asana::Task.comment word, "closed by commit " + message
-    end
+# finishes a task: [finishes #1234567890] or [fixes #1234567890]
+# comment on a task without finishing: [#1234567890]
+annotations = message.scan /\[(\w+)?\s*#(\d{10,})\]/
+annotations.each do |state, task_id|
+  case state
+  when /^(?:fix|finish)/i
+    # change task state if indicating fix/finish
+    Asana::Task.finish task_id
+  end
+
+  # always comment on the task
+  Asana::Task.comment task_id, "#{commit}\n\n#{message}"
 end
