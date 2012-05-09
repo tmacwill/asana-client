@@ -46,4 +46,12 @@ Basically, that's just creating a YAML configuration file (containing your API k
 
 ## Git Integration
 
-Copy the <tt>post-commit</tt> file into your repo's <tt>.git/hooks</tt> directory, and make sure to execute <tt>chmod +x .git/hooks/post-commit</tt> from the root of your repo. Now, simply mention the ID of an Asana task inside your commit message, and the issue will be closed automatically and a comment with the relevent commit will be posted. For example, if you determine a relevant bug has an ID of 12345 (using the asana command-line client), you could say <tt>git commit -m "this commit fixes issue 12345"</tt>.
+Copy the <tt>post-commit</tt> file into your repo's <tt>.git/hooks</tt> directory, and make sure to execute <tt>chmod +x .git/hooks/post-commit</tt> from the root of your repo.
+
+Now, simply mention the ID of an Asana task inside your commit message, and the issue will be annotated automatically with your commit message and will optionally complete the task. If you're familiar with git annotations with Pivotal Tracker, these will be second nature. Commit message examples:
+
+action | commit
+------- | --------
+annotate a task without finishing it | git commit -m "convert tabs to spaces in sort.c [#1234567890]"
+annotate a task and finish it | git commit -m "fix tricky bug [fixes #1234567890]"
+annotate a task and finish it | git commit -m "finish converting tabs [finishes #1234567890]"
