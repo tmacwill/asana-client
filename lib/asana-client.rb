@@ -207,7 +207,7 @@ module Asana
 
         # get all tasks associated with the current project
         def tasks
-            task_objects = Asana.get "tasks?workspace=#{workspace.id}&project=#{self.id}"
+            task_objects = Asana.get "tasks?project=#{self.id}"
             list = []
 
             task_objects["data"].each do |task|
