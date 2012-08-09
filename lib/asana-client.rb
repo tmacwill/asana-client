@@ -7,7 +7,7 @@
 #
 
 require "rubygems"
-require "JSON"
+require "json"
 require "net/https"
 require "yaml"
 require "chronic"
