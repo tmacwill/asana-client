@@ -94,7 +94,7 @@ module Asana
         string = args.join " "
 
         # workspace task name: create task in that workspace
-        if string =~ /^(\w+) ([\w ]+)/
+        if string =~ /^(\w+) (.+)/
             # get corresponding workspace 
             workspace = Asana::Workspace.find $1
 
@@ -105,7 +105,7 @@ module Asana
         end
 
         # workspace/project task name: create task in that workspace
-        if string =~ /^(\w+)\/(\w+) ([\w ]+)/
+        if string =~ /^(\w+)\/(\w+) (.+)/
             # get corresponding workspace 
             workspace = Asana::Workspace.find $1
 
