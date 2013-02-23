@@ -21,7 +21,7 @@ module Asana
         begin
             @@config = YAML.load_file File.expand_path "~/.asana-client"
         rescue
-            abort "Configuration file could not be found.\nSee https://github.com/tmac721/asana-client for installation instructions."
+            abort "Configuration file could not be found.\nSee https://github.com/tmacwill/asana-client for installation instructions."
         end
     end
 
