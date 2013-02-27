@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
     s.name = 'asana-client'
-    s.version = '0.0.1'
-    s.date = '2012-04-25'
+    s.version = '0.0.2'
+    s.date = '2013-02-26'
     s.summary = "Ruby client for Asana's REST API"
     s.description = "Command-line client and library for browsing, creating, and completing Asana tasks."
     s.authors = ["Tommy MacWilliam"]
