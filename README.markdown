@@ -19,9 +19,13 @@ Basically, that's just creating a YAML configuration file (containing your API k
 
     $ asana workspace
 
+To also list completed tasks, add the `-c` flag.
+
 ### View all of the tasks in a project
 
     $ asana workspace/project
+
+As for workspaces, add the `-c` flag to also list completed tasks.
 
 ### Create a new task in a workspace
 
