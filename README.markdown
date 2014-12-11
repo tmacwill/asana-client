@@ -26,6 +26,7 @@ To also list completed tasks, add the `-c` flag.
     $ asana workspace/project
 
 As for workspaces, add the `-c` flag to also list completed tasks.
+The `-m` flag can be given to only list tasks assigned to you.
 
 ### Create a new task in a workspace
 
