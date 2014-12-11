@@ -42,8 +42,11 @@ module Asana
             exit
         end
 
+        scope = args.shift
+        string = args.join " "
+
         # workspace: display tasks in that workspace
-        if string =~ /^(\w+)$/
+        if args.length == 0 and scope =~ /^([^\/]+)$/
             # get corresponding workspace object
             workspace = Asana::Workspace.find $1
             abort "Workspace not found!" unless workspace
@@ -54,7 +57,7 @@ module Asana
         end
 
         # workspace/project: display tasks in that project
-        if string =~ /^(\w+)\/(\w+)$/
+        if args.length == 0 and scope =~ /^([^\/]+)\/(.+)$/
             # get corresponding workspace
             workspace = Asana::Workspace.find $1
             abort "Workspace not found!" unless workspace
@@ -94,23 +97,23 @@ module Asana
         string = args.join " "
 
         # workspace task name: create task in that workspace
-        if string =~ /^(\w+) (.+)/
+        if scope =~ /^([^\/]+)$/
             # get corresponding workspace 
             workspace = Asana::Workspace.find $1
 
             # create task in workspace
-            Asana::Task.create workspace, $2, assignee, due
+            Asana::Task.create workspace, string, assignee, due
             puts "Task created in #{workspace.name}!"
             exit
         end
 
         # workspace/project task name: create task in that workspace
-        if string =~ /^(\w+)\/(\w+) (.+)/
+        if scope =~ /^([^\/]+)\/(.+)$/
             # get corresponding workspace 
             workspace = Asana::Workspace.find $1
 
             # create task in workspace
-            task = Asana::Task.create workspace, $3, assignee, due
+            task = Asana::Task.create workspace, string, assignee, due
 
             # get corresponding project
             project = Asana::Project.find workspace, $2
