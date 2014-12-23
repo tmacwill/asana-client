@@ -15,6 +15,8 @@ require "chronic"
 module Asana
 
     API_URL = "https://app.asana.com/api/1.0/"
+    @show_completed = false
+    @show_mine = false
 
     # initialize config values
     def Asana.init
@@ -30,6 +32,17 @@ module Asana
         # no arguments given
         if args.empty?
             abort "Nothing to do here."
+        end
+
+        if args.include? "-c"
+            @show_completed = true
+            args = args - ["-c"]
+        end
+
+        if args.include? "-m"
+            me = Asana.get "users/me"
+            @show_mine = me["data"]["id"]
+            args = args - ["-m"]
         end
 
         # concatenate array into a string
@@ -49,7 +62,8 @@ module Asana
             abort "Workspace not found!" unless workspace
 
             # display all tasks in workspace
-            puts workspace.tasks unless workspace.tasks.empty?
+            tasks = workspace.tasks @show_completed
+            puts tasks unless tasks.empty?
             exit
         end
 
@@ -64,7 +78,8 @@ module Asana
             abort "Project not found!" unless project
 
             # display all tasks in project
-            puts project.tasks unless project.tasks.empty?
+            tasks = project.tasks @show_completed, @show_mine
+            puts tasks unless tasks.empty?
             exit
         end
 
@@ -206,11 +221,23 @@ module Asana
         end
 
         # get all tasks associated with the current project
-        def tasks
-            task_objects = Asana.get "tasks?project=#{self.id}"
+        def tasks(completed, mine)
+            lookup = "tasks?project=#{self.id}"
+            if mine
+                # because we cannot filter on project & assignee
+                lookup += "&opt_fields=name,assignee"
+            end
+            if not completed
+                lookup += "&completed_since=now"
+            end
+            task_objects = Asana.get lookup
             list = []
 
             task_objects["data"].each do |task|
+                if mine and (task["assignee"] == nil or task["assignee"]["id"] != mine)
+                    next
+                end
+
                 list.push Task.new :id => task["id"], :name => task["name"],
                     :workspace => self.workspace, :project => self
             end
@@ -347,9 +374,16 @@ module Asana
             list
         end
 
-        # get tasks assigned to me within this workspace
-        def tasks
-            task_objects = Asana.get "tasks?workspace=#{self.id}&assignee=me"
+        # get tasks within this workspace
+        def tasks(completed)
+            lookup = "tasks?workspace=#{self.id}"
+            # -m can't be supported because the API requires that we
+            # always set the assignee for workspaces.
+            lookup += "&assignee=me"
+            if not completed
+                lookup += "&completed_since=now"
+            end
+            task_objects = Asana.get lookup
             list = []
 
             task_objects["data"].each do |task|
